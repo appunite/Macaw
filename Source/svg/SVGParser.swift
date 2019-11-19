@@ -156,7 +156,7 @@ open class SVGParser {
             }
             if let id = element.allAttributes["id"]?.text {
                 switch element.name {
-                case "linearGradient", "radialGradient", "fill":
+                case "linearGradient", "radialGradient", SVGKeys.fill:
                     defFills[id] = try parseFill(node)
                 case "pattern":
                     defPatterns[id] = try parsePattern(node)
@@ -266,47 +266,60 @@ open class SVGParser {
         guard let element = node.element else {
             return .none
         }
+        let hasMask = style["mask"] != .none
         let position = getPosition(element)
         switch element.name {
         case "path":
             if var path = parsePath(node) {
+                let mask = try getMask(style, locus: path)
                 if let rule = getFillRule(style) {
                     path = Path(segments: path.segments, fillRule: rule)
                 }
-
-                let mask = try getMask(style, locus: path)
-
-                return Shape(form: path, fill: getFillColor(style, groupStyle: style, locus: path), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: path), mask: mask, tag: getTag(element))
+                if !hasMask || hasMask && mask != .none {
+                    return Shape(form: path, fill: getFillColor(style, groupStyle: style, locus: path), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: path), mask: mask, tag: getTag(element))
+                }
             }
         case "line":
             if let line = parseLine(node) {
                 let mask = try getMask(style, locus: line)
-                return Shape(form: line, fill: getFillColor(style, groupStyle: style, locus: line), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: line), mask: mask, tag: getTag(element))
+                if !hasMask || hasMask && mask != .none {
+                    return Shape(form: line, fill: getFillColor(style, groupStyle: style, locus: line), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: line), mask: mask, tag: getTag(element))
+                }
             }
         case "rect":
             if let rect = parseRect(node) {
                 let mask = try getMask(style, locus: rect)
-                return Shape(form: rect, fill: getFillColor(style, groupStyle: style, locus: rect), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: rect), mask: mask, tag: getTag(element))
+                if !hasMask || hasMask && mask != .none {
+                    return Shape(form: rect, fill: getFillColor(style, groupStyle: style, locus: rect), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: rect), mask: mask, tag: getTag(element))
+                }
             }
         case "circle":
             if let circle = parseCircle(node) {
                 let mask = try getMask(style, locus: circle)
-                return Shape(form: circle, fill: getFillColor(style, groupStyle: style, locus: circle), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: circle), mask: mask, tag: getTag(element))
+                if !hasMask || hasMask && mask != .none {
+                    return Shape(form: circle, fill: getFillColor(style, groupStyle: style, locus: circle), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: circle), mask: mask, tag: getTag(element))
+                }
             }
         case "ellipse":
             if let ellipse = parseEllipse(node) {
                 let mask = try getMask(style, locus: ellipse)
-                return Shape(form: ellipse, fill: getFillColor(style, groupStyle: style, locus: ellipse), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: ellipse), mask: mask, tag: getTag(element))
+                if !hasMask || hasMask && mask != .none {
+                    return Shape(form: ellipse, fill: getFillColor(style, groupStyle: style, locus: ellipse), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: ellipse), mask: mask, tag: getTag(element))
+                }
             }
         case "polygon":
             if let polygon = parsePolygon(node) {
                 let mask = try getMask(style, locus: polygon)
-                return Shape(form: polygon, fill: getFillColor(style, groupStyle: style, locus: polygon), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: polygon), mask: mask, tag: getTag(element))
+                if !hasMask || hasMask && mask != .none {
+                    return Shape(form: polygon, fill: getFillColor(style, groupStyle: style, locus: polygon), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: polygon), mask: mask, tag: getTag(element))
+                }
             }
         case "polyline":
             if let polyline = parsePolyline(node) {
                 let mask = try getMask(style, locus: polyline)
-                return Shape(form: polyline, fill: getFillColor(style, groupStyle: style, locus: polyline), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: polyline), mask: mask, tag: getTag(element))
+                if !hasMask || hasMask && mask != .none {
+                    return Shape(form: polyline, fill: getFillColor(style, groupStyle: style, locus: polyline), stroke: getStroke(style, groupStyle: style), place: position, opacity: getOpacity(style), clip: getClipPath(style, locus: polyline), mask: mask, tag: getTag(element))
+                }
             }
         case "image":
             return parseImage(node, opacity: getOpacity(style), pos: position, clip: getClipPath(style, locus: nil))
@@ -316,7 +329,7 @@ open class SVGParser {
         case "use":
             return try parseUse(node, groupStyle: style, place: position)
         case "title", "desc", "mask", "clip", "filter",
-             "linearGradient", "radialGradient", "fill":
+             "linearGradient", "radialGradient", SVGKeys.fill:
             break
         default:
             print("SVG parsing error. Shape \(element.name) not supported")
@@ -571,9 +584,14 @@ open class SVGParser {
             }
         }
 
+        let hasCurrentColor = styleAttributes[SVGKeys.fill] == SVGKeys.currentColor
+
         self.availableStyleAttributes.forEach { availableAttribute in
             if let styleAttribute = element.allAttributes[availableAttribute]?.text, styleAttribute != "inherit" {
-                styleAttributes.updateValue(styleAttribute, forKey: availableAttribute)
+
+                if !hasCurrentColor || availableAttribute != SVGKeys.color {
+                    styleAttributes.updateValue(styleAttribute, forKey: availableAttribute)
+                }
             }
         }
 
@@ -625,7 +643,7 @@ open class SVGParser {
             opacity = Double(fillOpacity.replacingOccurrences(of: " ", with: "")) ?? 1
         }
 
-        guard var fillColor = styleParts["fill"] else {
+        guard var fillColor = styleParts[SVGKeys.fill] else {
             return Color.black.with(a: opacity)
         }
         if let colorId = parseIdFromUrl(fillColor) {
@@ -636,7 +654,7 @@ open class SVGParser {
                 return getPatternFill(pattern: pattern, locus: locus)
             }
         }
-        if fillColor == "currentColor", let currentColor = groupStyle["color"] {
+        if fillColor == SVGKeys.currentColor, let currentColor = groupStyle[SVGKeys.color] {
             fillColor = currentColor
         }
 
@@ -660,7 +678,7 @@ open class SVGParser {
         guard var strokeColor = styleParts["stroke"] else {
             return .none
         }
-        if strokeColor == "currentColor", let currentColor = groupStyle["color"] {
+        if strokeColor == SVGKeys.currentColor, let currentColor = groupStyle[SVGKeys.color] {
             strokeColor = currentColor
         }
         var opacity: Double = 1
@@ -997,7 +1015,7 @@ open class SVGParser {
         let attributes = getStyleAttributes([:], element: element)
 
         return Text(text: text, font: getFont(attributes, fontName: fontName, fontWeight: fontWeight, fontSize: fontSize),
-                    fill: (attributes["fill"] != nil) ? getFillColor(attributes)! : fill, stroke: stroke ?? getStroke(attributes),
+                    fill: (attributes[SVGKeys.fill] != nil) ? getFillColor(attributes)! : fill, stroke: stroke ?? getStroke(attributes),
                     align: anchorToAlign(textAnchor ?? getTextAnchor(attributes)), baseline: .alphabetic,
                     place: pos, opacity: getOpacity(attributes), tag: getTag(element))
     }
@@ -1098,7 +1116,11 @@ open class SVGParser {
                 }
             }
         }
-        return UserSpaceLocus(locus: path!, userSpace: userSpace)
+
+        if let path = path {
+            return UserSpaceLocus(locus: path, userSpace: userSpace)
+        }
+        return .none
     }
 
     fileprivate func parseMask(_ mask: XMLIndexer) throws -> UserSpaceNode? {
@@ -1352,7 +1374,7 @@ open class SVGParser {
         }
         var color = Color.black.with(a: opacity)
         if var stopColor = getStyleAttributes([:], element: element)["stop-color"] {
-            if stopColor == "currentColor", let currentColor = groupStyle["color"] {
+            if stopColor == SVGKeys.currentColor, let currentColor = groupStyle[SVGKeys.color] {
                 stopColor = currentColor
             }
             color = createColor(stopColor.replacingOccurrences(of: " ", with: ""), opacity: opacity)!
@@ -1505,7 +1527,10 @@ open class SVGParser {
     }
 
     fileprivate func getMask(_ attributes: [String: String], locus: Locus?) throws -> Node? {
-        guard let maskName = attributes["mask"], let id = parseIdFromUrl(maskName), let userSpaceNode = defMasks[id], let locus = locus else {
+        guard let maskName = attributes["mask"], let locus = locus else {
+            return .none
+        }
+        guard let id = parseIdFromUrl(maskName), let userSpaceNode = defMasks[id] else {
             return .none
         }
         if !userSpaceNode.userSpace {
@@ -1605,7 +1630,7 @@ private class PathDataReader {
     }
 
     public func read() -> [PathSegment] {
-        _ = readNext()
+        readNext()
         var segments = [PathSegment]()
         while let array = readSegments() {
             segments.append(contentsOf: array)
@@ -1620,7 +1645,12 @@ private class PathDataReader {
                 return [PathSegment(type: type)]
             }
             var result = [PathSegment]()
-            let data = readData()
+            let data: [Double]
+            if type == .a || type == .A {
+                data = readDataOfASegment()
+            } else {
+                data = readData()
+            }
             var index = 0
             var isFirstSegment = true
             while index < data.count {
@@ -1658,6 +1688,28 @@ private class PathDataReader {
         }
     }
 
+    private func readDataOfASegment() -> [Double] {
+        let argCount = getArgCount(segment: .A)
+        var data: [Double] = []
+        var index = 0
+        while true {
+            skipSpaces()
+            let value: Double?
+            let indexMod = index % argCount
+            if indexMod == 3 || indexMod == 4 {
+                value = readFlag()
+            } else {
+                value = readNum()
+            }
+            guard let doubleValue = value else {
+                return data
+            }
+            data.append(doubleValue)
+            index += 1
+        }
+        return data
+    }
+
     private func skipSpaces() {
         var ch = current
         while ch != nil && "\n\r\t ,".contains(String(ch!)) {
@@ -1665,21 +1717,42 @@ private class PathDataReader {
         }
     }
 
+    private func readFlag() -> Double? {
+        guard let ch = current else {
+            return .none
+        }
+        readNext()
+        switch ch {
+        case "0":
+            return 0
+        case "1":
+            return 1
+        default:
+            return .none
+        }
+    }
+
     fileprivate func readNum() -> Double? {
         guard let ch = current else {
-            return nil
+            return .none
         }
-        if (ch >= "0" && ch <= "9") || ch == "." || ch == "-" {
-            var chars = [ch]
-            var hasDot = ch == "."
-            while let ch = readDigit(&hasDot) {
-                chars.append(ch)
-            }
-            var buf = ""
-            buf.unicodeScalars.append(contentsOf: chars)
-            return Double(buf)
+
+        guard ch >= "0" && ch <= "9" || ch == "." || ch == "-" else {
+            return .none
         }
-        return nil
+
+        var chars = [ch]
+        var hasDot = ch == "."
+        while let ch = readDigit(&hasDot) {
+            chars.append(ch)
+        }
+
+        var buf = ""
+        buf.unicodeScalars.append(contentsOf: chars)
+        guard let value = Double(buf) else {
+            return .none
+        }
+        return value
     }
 
     fileprivate func readDigit(_ hasDot: inout Bool) -> UnicodeScalar? {
@@ -1709,6 +1782,7 @@ private class PathDataReader {
         return false
     }
 
+    @discardableResult
     private func readNext() -> UnicodeScalar? {
         previous = current
         current = iterator.next()
@@ -1725,7 +1799,7 @@ private class PathDataReader {
     private func readSegmentType() -> PathSegmentType? {
         while true {
             if let type = getPathSegmentType() {
-                _ = readNext()
+                readNext()
                 return type
             }
             if readNext() == nil {
@@ -1841,4 +1915,10 @@ fileprivate class UserSpacePattern {
         self.userSpace = userSpace
         self.contentUserSpace = contentUserSpace
     }
+}
+
+fileprivate enum SVGKeys {
+    static let fill = "fill"
+    static let color = "color"
+    static let currentColor = "currentColor"
 }
