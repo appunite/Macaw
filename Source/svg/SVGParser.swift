@@ -168,7 +168,8 @@ open class SVGParser {
             if element.name == "style" {
                 parseStyle(node)
             } else if element.name == "defs" || element.name == "g" {
-                try node.children.forEach { child in
+                let sortedChildren = sortXMLIndexersBySortPosition(node.children)
+                try sortedChildren.forEach { child in
                     try prepareSvg(child)
                 }
             }
@@ -188,6 +189,13 @@ open class SVGParser {
                     defNodes[id] = node
                 }
             }
+        }
+    }
+    
+    // It's needed to sort attributes that default ones are before "1" ones (look into sortPosition var; if not, 0 items may not be seen whilst parsing)
+    private func sortXMLIndexersBySortPosition(_ elements: [XMLIndexer]) -> [XMLIndexer] {
+        return elements.sorted { indexer1, indexer2 -> Bool in
+            return (indexer1.element?.sortPosition ?? 0 < indexer2.element?.sortPosition ?? 0)
         }
     }
 

@@ -786,6 +786,19 @@ public class XMLElement: XMLContent {
         }
         return allAttributes[name]
     }
+        
+    public var sortPosition: Int {
+        if allAttributes["id"]?.text != nil {
+            switch name {
+            case "linearGradient", "radialGradient", "fill", "pattern", "mask", "filter", "clip", "clipPath":
+                return 1
+            default:
+                return 0
+            }
+        } else {
+            return 0
+        }
+    }
 
     /// The inner text of the element, if it exists
     public var text: String {
