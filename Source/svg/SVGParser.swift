@@ -453,8 +453,8 @@ open class SVGParser {
 
         let x = getDoubleValue(element, attribute: "x") ?? parentPattern?.bounds.x ?? 0
         let y = getDoubleValue(element, attribute: "y") ?? parentPattern?.bounds.y ?? 0
-        let w = getDoubleValue(element, attribute: "width") ?? parentPattern?.bounds.w ?? 0
-        let h = getDoubleValue(element, attribute: "height") ?? parentPattern?.bounds.h ?? 0
+        let w = getDoubleValue(element, attribute: "width") ?? parentPattern?.bounds.w ?? 1
+        let h = getDoubleValue(element, attribute: "height") ?? parentPattern?.bounds.h ?? 1
         let bounds = Rect(x: x, y: y, w: w, h: h)
 
         var userSpace = parentPattern?.userSpace ?? false
@@ -465,23 +465,26 @@ open class SVGParser {
         if let units = element.allAttributes["patternContentUnits"]?.text, units == "objectBoundingBox" {
             contentUserSpace = false
         }
-
+        
+        let isShapeOrImage = try ((try parseNode(pattern.children.first!) is Shape) || (try parseNode(pattern.children.first!) is Image))
         var contentNode: Node?
         if pattern.children.isEmpty {
             if let parentPattern = parentPattern {
                 contentNode = parentPattern.content
             }
         } else if pattern.children.count == 1,
-            let shape = try parseNode(pattern.children.first!) as? Shape {
-            contentNode = shape
+            isShapeOrImage == true {
+            contentNode = try parseNode(pattern.children.first!)
         } else {
-            var shapes = [Shape]()
+            var nodes = [Node]()
             try pattern.children.forEach { indexer in
                 if let shape = try parseNode(indexer) as? Shape {
-                    shapes.append(shape)
+                    nodes.append(shape)
+                } else if let image = try parseNode(indexer) as? Image {
+                    nodes.append(image)
                 }
             }
-            contentNode = Group(contents: shapes)
+            contentNode = Group(contents: nodes)
         }
 
         return UserSpacePattern(content: contentNode!,
