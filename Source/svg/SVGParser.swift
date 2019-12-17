@@ -271,7 +271,8 @@ open class SVGParser {
                 return .none
             }
             switch element.name {
-            case "g":
+            // for my case switch behaves the same as it wasn't here, so as a workaround treating it like a 'g'
+            case "g", "switch":
                 result = try parseGroup(node, style: style)
             case "style", "defs":
                 // do nothing - it was parsed on first iteration
