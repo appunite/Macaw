@@ -115,13 +115,13 @@ extension AnimationProducer {
     // MARK: - Combine animation
     func addCombineAnimation(_ combineAnimation: Animation, _ context: AnimationContext) {
         guard let combine = combineAnimation as? CombineAnimation,
-            let renderer = combine.nodeRenderer,
-            let view = renderer.view else {
+            let _ = combine.nodeRenderer,
+            let node = combine.node else {
                 return
         }
 
         var animations = combine.animations
-        if let fromBounds = combine.node?.bounds, let toBounds = combine.toNodes.group().bounds {
+        if let _ = combine.node?.bounds, let _ = combine.toNodes.group().bounds {
             let childAnimations = createChildAnimations(combine) as! [BasicAnimation]
             animations.append(contentsOf: childAnimations)
         }
@@ -176,6 +176,7 @@ extension AnimationProducer {
         }
 
         combine.removeFunc = {
+            node.animations.removeAll { $0 === combine }
             animations.forEach { animation in
                 animation.removeFunc?()
             }

@@ -143,9 +143,9 @@ class AnimationProducer {
     }
 
     // MARK: - Sequence animation
-    func addAnimationSequence(_ animationSequnce: Animation,
+    func addAnimationSequence(_ animationSequence: Animation,
                               _ context: AnimationContext) {
-        guard let sequence = animationSequnce as? AnimationSequence else {
+        guard let sequence = animationSequence as? AnimationSequence else {
             return
         }
 
@@ -198,7 +198,7 @@ class AnimationProducer {
     }
 
     // MARK: - Stored animation
-    func addStoredAnimations(_ node: Node, _ view: MacawView) {
+    func addStoredAnimations(_ node: Node, _ view: DrawingView) {
         addStoredAnimations(node, AnimationContext())
     }
 
@@ -269,7 +269,6 @@ class AnimationProducer {
         }
 
         let currentDate = Date()
-        var animationsToRemove = [Animation]()
         let count = contentsAnimations.count
         for (index, animationDesc) in contentsAnimations.reversed().enumerated() {
 
